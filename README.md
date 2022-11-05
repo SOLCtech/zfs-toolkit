@@ -10,6 +10,7 @@
 -h, --help		Shows help
 -p, --prefix		E.g. "mybackup" for rpool/USERDATA@mybackup_20221002-23
 -n, --dry-run		Calls zfs destroy with -n argument
+-d, --debug             Debug mode (set -x)
 ```
 
 Purges snapshots by defined prefix recursively.
@@ -27,22 +28,22 @@ off
 ### Example
 Turn on of purging for prefix "**backup**" for whole **rpool**, keeping minimal of 5 snapshots per dataset and keeping snapshots not older than 25 days.
 ```shell
-$ zfs set cz.solctech:purge:backup=on,keepnum=5,keepdays=25 rpool
+zfs set cz.solctech:purge:backup=on,keepnum=5,keepdays=25 rpool
 ```
 
 For **USERDATA** keep more history (min. 10 snapshots and last 60 days).
 ```shell
-$ zfs set cz.solctech:purge:backup=on,keepnum=10,keepdays=60 rpool/USERDATA
+zfs set cz.solctech:purge:backup=on,keepnum=10,keepdays=60 rpool/USERDATA
 ```
 
 For **Projects** turn off purging - no snapshots will be destroyed.
 ```shell
-$ zfs set cz.solctech:purge:backup=off rpool/USERDATA/myuser/Projects
+zfs set cz.solctech:purge:backup=off rpool/USERDATA/myuser/Projects
 ```
 
 Specify correct prefix, specify datasets (or omit for all locally imported), and try dry run.
 ```shell
-$ ./purge.sh --dry-run --prefix=backup rpool
+./purge.sh --dry-run --prefix=backup rpool
 ```
 
 If everything seems ok, put in daily or weekly cron.

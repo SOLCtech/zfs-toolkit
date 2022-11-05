@@ -2,12 +2,14 @@
 
 # cz.solctech:purge:backup = on,keepnum=3,keepdays=15
 
-DIR="$(realpath "$(dirname -- "$0";)")"
+set -euo pipefail
+
+DIR="$(realpath "$(dirname -- "$0")")"
 
 source "$DIR/inc/funcs.sh"
 
 show_help() {
-cat << EOF
+	cat << EOF
 Usage:
 ./purge.sh -h|--help
 ./purge.sh -p|--prefix=snapshot_prefix [-n|--dry-run] [zfs_dataset]...
@@ -15,6 +17,7 @@ Usage:
 -h, --help		Shows help
 -p, --prefix		E.g. "mybackup" for rpool/USERDATA@mybackup_20221002-23
 -n, --dry-run		Calls zfs destroy with -n argument
+-d, --debug		Debug mode (set -x)
 
 Purges snapshots by defined prefix recursively.
 Its behaviour is controlled by zfs dataset property "cz.solctech:purge:<prefix>".
@@ -54,29 +57,32 @@ DEFAULT_KEEPDAYS=15
 DRYRUN=0
 PREFIX=""
 
-options=$(getopt -l "help,prefix:,dry-run" -o "hp:n" -- "$@")
+options=$(getopt -l "help,prefix:,dry-run,debug" -o "hp:nd" -- "$@")
 
 eval set -- "$options"
 
-while true
-do
-case "$1" in
--h|--help)
-	show_help
-	exit
-	;;
--p|--prefix)
+while true; do
+	case "$1" in
+	-h | --help)
+		show_help
+		exit
+		;;
+	-p | --prefix)
+		shift
+		PREFIX="$1"
+		;;
+	-n | --dry-run)
+		DRYRUN=1
+		;;
+	-d | --debug)
+		set -x
+		;;
+	--)
+		shift
+		break
+		;;
+	esac
 	shift
-	PREFIX="$1"
-	;;
--n|--dry-run)
-    DRYRUN=1
-    ;;
---)
-    shift
-    break;;
-esac
-shift
 done
 
 if [[ -z "$PREFIX" ]]; then
@@ -87,8 +93,8 @@ fi
 # shellcheck disable=SC2068
 TO_DESTROY="$(traverse_datasets_to_purge "$PREFIX" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS ${@:-$(zfs list -t filesystem -H -o name -d 0)})" || exit 1
 
-if (( DRYRUN == 1 )); then
-	echo "$TO_DESTROY" | xargs -n1 zfs destroy -vn
+if ((DRYRUN == 1)); then
+	echo "$TO_DESTROY" | xargs -n1 --no-run-if-empty zfs destroy -vn
 else
-	echo "$TO_DESTROY" | xargs -n1 zfs destroy -v
+	echo "$TO_DESTROY" | xargs -n1 --no-run-if-empty zfs destroy -v
 fi

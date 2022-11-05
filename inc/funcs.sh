@@ -1,4 +1,3 @@
-
 function get_snapshots_to_purge() {
 	local DATASET PREFIX KEEPNUM KEEPDAYS LIST DATE IFS FILTERED_LIST SNAP SNAPDATE SNAPNAME
 
@@ -7,8 +6,11 @@ function get_snapshots_to_purge() {
 	KEEPNUM="$3"
 	KEEPDAYS="$4"
 
-	LIST="$(zfs list -t snapshot -H -p -o creation,name -s creation "$DATASET" 2> /dev/null)" || { >&2 echo "Dataset $DATASET not found."; exit 1; }
-	LIST="$(echo "$LIST" | grep "@${PREFIX}_" | head -n -$KEEPNUM)"
+	LIST="$(zfs list -t snapshot -H -p -o creation,name -s creation "$DATASET" 2> /dev/null)" || {
+		echo >&2 "Dataset $DATASET not found."
+		exit 1
+	}
+	LIST="$(echo "$LIST" | grep "@${PREFIX}_" | head -n -"$KEEPNUM")"
 	DATE="$(date +%s --date="-${KEEPDAYS} days")"
 
 	IFS=$'\n'
@@ -19,7 +21,7 @@ function get_snapshots_to_purge() {
 		SNAPDATE=$(echo "$SNAP" | cut -d $'\t' -s -f 1)
 		SNAPNAME=$(echo "$SNAP" | cut -d $'\t' -s -f 2)
 
-		if (( "$SNAPDATE" < "$DATE" )); then
+		if (("$SNAPDATE" < "$DATE")); then
 			FILTERED_LIST="$FILTERED_LIST $SNAPNAME"
 		fi
 	done
@@ -37,7 +39,10 @@ function get_dataset_property() {
 	PROPERTY_NAME="cz.solctech:${SECTION}:${PREFIX}"
 
 	# cz.solctech:purge:backup = on,keepnum=3,keepdays=15
-	PROPERTY="$(zfs get -t filesystem -H -p -o value,source "$PROPERTY_NAME" "$DATASET" 2> /dev/null)" || { >&2 echo "Reading property $PROPERTY_NAME of dataset $DATASET failed."; exit 1; }
+	PROPERTY="$(zfs get -t filesystem -H -p -o value,source "$PROPERTY_NAME" "$DATASET" 2> /dev/null)" || {
+		echo >&2 "Reading property $PROPERTY_NAME of dataset $DATASET failed."
+		exit 1
+	}
 
 	IFS=$'\t'
 	read -r VALUE SOURCE <<< "$PROPERTY"
@@ -70,7 +75,7 @@ function parse_purge_properties() {
 		fi
 	done
 
-	if (( ONOFF == 0 )); then
+	if ((ONOFF == 0)); then
 		return 1
 	fi
 
@@ -80,8 +85,10 @@ function parse_purge_properties() {
 function get_direct_children() {
 	local DATASET="$1"
 
-  set -o pipefail
-	zfs list -t filesystem -H -o name -d 1 "$DATASET" 2> /dev/null | tail -n +2 || { >&2 echo "Listing of $DATASET children failed."; exit 1; }
+	zfs list -t filesystem -H -o name -d 1 "$DATASET" 2> /dev/null | tail -n +2 || {
+		echo >&2 "Listing of $DATASET children failed."
+		exit 1
+	}
 }
 
 function traverse_datasets_to_purge() {
@@ -94,10 +101,13 @@ function traverse_datasets_to_purge() {
 	DATASETS="$*"
 
 	for DATASET in $DATASETS; do
-		process_dataset_to_purge "$PREFIX" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" "$DATASET" || exit 1
+		process_dataset_to_purge "$PREFIX" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" "$DATASET" || continue
 		DIRECT_CHILDREN="$(get_direct_children "$DATASET")" || exit 1
-		# shellcheck disable=SC2086
-		traverse_datasets_to_purge "$PREFIX" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" $DIRECT_CHILDREN || exit 1
+
+		if [[ -n $DIRECT_CHILDREN ]]; then
+			# shellcheck disable=SC2086
+			traverse_datasets_to_purge "$PREFIX" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" $DIRECT_CHILDREN || exit 1
+		fi
 	done
 }
 
@@ -109,15 +119,16 @@ function process_dataset_to_purge() {
 	PARENT_KEEPDAYS="$3"
 	DATASET="$4"
 
-	PROPERTY=$(get_dataset_property "$DATASET" purge "$PREFIX") || exit 1
-	PROPERTIES=$(parse_purge_properties "$PROPERTY") || exit 1
-	read KEEPNUM KEEPDAYS <<< "$PROPERTIES"
+	PROPERTY=$(get_dataset_property "$DATASET" purge "$PREFIX")
+	PROPERTIES=$(parse_purge_properties "$PROPERTY") || return 0
 
-	if (( KEEPNUM < 0 )); then
+	read -r KEEPNUM KEEPDAYS <<< "$PROPERTIES"
+
+	if ((KEEPNUM < 0)); then
 		KEEPNUM=$PARENT_KEEPNUM
 	fi
 
-	if (( KEEPDAYS < 0 )); then
+	if ((KEEPDAYS < 0)); then
 		KEEPDAYS=$PARENT_KEEPDAYS
 	fi
 
