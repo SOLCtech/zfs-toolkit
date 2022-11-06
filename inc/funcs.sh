@@ -26,7 +26,18 @@ function get_snapshots_to_purge() {
 		fi
 	done
 
-	echo "$FILTERED_LIST" | xargs
+	FILTERED_LIST=$(echo "$FILTERED_LIST" | xargs)
+
+	if ((VERBOSE == 1)); then
+		echo >&2 "  Found snapshots to purge:"
+
+		IFS=$' '
+		for SNAP in $FILTERED_LIST; do
+			echo >&2 "    $SNAP"
+		done
+	fi
+
+	echo "$FILTERED_LIST"
 }
 
 function get_dataset_property() {
@@ -76,6 +87,10 @@ function parse_purge_properties() {
 	done
 
 	if ((ONOFF == 0)); then
+		if ((VERBOSE == 1)); then
+    		echo >&2 "  OFF"
+		fi
+
 		return 1
 	fi
 
@@ -101,6 +116,10 @@ function traverse_datasets_to_purge() {
 	DATASETS="$*"
 
 	for DATASET in $DATASETS; do
+		if ((VERBOSE == 1)); then
+			echo -e >&2 "\nDataset: $DATASET"
+		fi
+
 		process_dataset_to_purge "$PREFIX" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" "$DATASET" || continue
 		DIRECT_CHILDREN="$(get_direct_children "$DATASET")" || exit 1
 
@@ -130,6 +149,10 @@ function process_dataset_to_purge() {
 
 	if ((KEEPDAYS < 0)); then
 		KEEPDAYS=$PARENT_KEEPDAYS
+	fi
+
+	if ((VERBOSE == 1)); then
+		echo >&2 "  ON, keep number = $KEEPNUM, keep days = $KEEPDAYS"
 	fi
 
 	get_snapshots_to_purge "$DATASET" "$PREFIX" "$KEEPNUM" "$KEEPDAYS" || exit 1

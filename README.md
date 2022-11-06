@@ -11,6 +11,7 @@
 -p, --prefix		E.g. "mybackup" for rpool/USERDATA@mybackup_20221002-23
 -n, --dry-run		Calls zfs destroy with -n argument
 -d, --debug             Debug mode (set -x)
+-v, --verbose		Verbose mode
 ```
 
 Purges snapshots by defined prefix recursively.

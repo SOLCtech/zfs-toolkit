@@ -18,6 +18,7 @@ Usage:
 -p, --prefix		E.g. "mybackup" for rpool/USERDATA@mybackup_20221002-23
 -n, --dry-run		Calls zfs destroy with -n argument
 -d, --debug		Debug mode (set -x)
+-v, --verbose		Verbose mode
 
 Purges snapshots by defined prefix recursively.
 Its behaviour is controlled by zfs dataset property "cz.solctech:purge:<prefix>".
@@ -55,9 +56,10 @@ EOF
 DEFAULT_KEEPNUM=3
 DEFAULT_KEEPDAYS=15
 DRYRUN=0
+VERBOSE=0
 PREFIX=""
 
-options=$(getopt -l "help,prefix:,dry-run,debug" -o "hp:nd" -- "$@")
+options=$(getopt -l "help,prefix:,dry-run,debug,verbose" -o "hp:ndv" -- "$@")
 
 eval set -- "$options"
 
@@ -77,6 +79,9 @@ while true; do
 	-d | --debug)
 		set -x
 		;;
+	-v | --verbose)
+		VERBOSE=1
+		;;
 	--)
 		shift
 		break
@@ -90,8 +95,18 @@ if [[ -z "$PREFIX" ]]; then
 	exit 1
 fi
 
-# shellcheck disable=SC2068
-TO_DESTROY="$(traverse_datasets_to_purge "$PREFIX" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS ${@:-$(zfs list -t filesystem -H -o name -d 0)})" || exit 1
+DATASETS="${*:-$(zfs list -t filesystem -H -o name -d 0)}"
+
+if ((VERBOSE == 1)); then
+	echo -e >&2 "\nSelected root datasets: $(echo "$DATASETS" | xargs)"
+fi
+
+# shellcheck disable=SC2086
+TO_DESTROY="$(traverse_datasets_to_purge "$PREFIX" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS $DATASETS)" || exit 1
+
+if ((VERBOSE == 1)); then
+	echo -e >&2 "\nExecuting zfs destroy ...\n"
+fi
 
 if ((DRYRUN == 1)); then
 	echo "$TO_DESTROY" | xargs -n1 --no-run-if-empty zfs destroy -vn
