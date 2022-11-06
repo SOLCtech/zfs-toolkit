@@ -20,7 +20,7 @@ Purges snapshots by defined prefix recursively.
 Its behaviour is controlled by zfs dataset property "**cz.solctech:purge:\<prefix\>**". Value of property specifies if purging has to be done and how many snapshots and/or how many days have to be kept back.
 
 #### Property value format
-((on|yes|true)|(off|no|false))[,keepnum=<num>[,keepdays=<num>]]
+((on|yes|true)|(off|no|false))[,keepnum=#num[,keepdays=#num]]
 
 #### Property value examples
 on \
