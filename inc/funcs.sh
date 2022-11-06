@@ -157,3 +157,34 @@ function process_dataset_to_purge() {
 
 	get_snapshots_to_purge "$DATASET" "$PREFIX" "$KEEPNUM" "$KEEPDAYS" || exit 1
 }
+
+function check_snapshots_list() {
+	local PREFIX SNAPSHOT_LIST
+
+	PREFIX="$1"
+	shift 1
+	SNAPSHOT_LIST="$*"
+
+	for SNAPSHOT in $SNAPSHOT_LIST; do
+		check_if_snapshot "$PREFIX" "$SNAPSHOT"
+	done
+}
+
+function check_if_snapshot() {
+	local PREFIX SNAPSHOT
+
+	PREFIX="$1"
+	SNAPSHOT="$2"
+
+	echo "$SNAPSHOT" | grep -E "^[^[:blank:]]+@${PREFIX}[^[:blank:]]+$" > /dev/null 2>&1 || {
+		echo -e >&2 "\nFATAL ERROR!\nDataset '$SNAPSHOT' seems to does not correspond to prefix '$PREFIX' and/or does not match snapshot format."
+		exit 1
+	}
+
+	TYPE="$(zfs get type -H -p -o value "$SNAPSHOT")"
+
+	[[ "$TYPE" == 'snapshot' ]] || {
+		echo -e >&2 "\nFATAL ERROR!\nType of dataset '$SNAPSHOT' is not 'snapshot' but '$TYPE'!!!"
+		exit 1
+	}
+}

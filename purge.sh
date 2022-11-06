@@ -105,6 +105,13 @@ fi
 TO_DESTROY="$(traverse_datasets_to_purge "$PREFIX" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS $DATASETS)" || exit 1
 
 if ((VERBOSE == 1)); then
+	echo -e >&2 "\nChecking snapshot list validity ...\n"
+fi
+
+# shellcheck disable=SC2086
+check_snapshots_list "$PREFIX" $TO_DESTROY
+
+if ((VERBOSE == 1)); then
 	echo -e >&2 "\nExecuting zfs destroy ...\n"
 fi
 
