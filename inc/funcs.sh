@@ -181,7 +181,7 @@ function check_if_snapshot() {
 		exit 1
 	}
 
-	TYPE="$(zfs get type -H -p -o value "$SNAPSHOT")"
+	TYPE="$(zfs get -H -p -o value type "$SNAPSHOT")"
 
 	[[ "$TYPE" == 'snapshot' ]] || {
 		echo -e >&2 "\nFATAL ERROR!\nType of dataset '$SNAPSHOT' is not 'snapshot' but '$TYPE'!!!"
