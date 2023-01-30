@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # cz.solctech:purge:backup = on,keepnum=3,keepdays=15
 
