@@ -107,6 +107,7 @@ DATASETS="${*:-$(zfs list -t filesystem -H -o name -d 0)}"
 
 if ((VERBOSE == 1)); then
 	echo -e >&2 "\nSelected root datasets: $(echo "$DATASETS" | xargs)"
+	echo -e >&2 "\nOptions: prefix = $PREFIX, dryrun = $DRYRUN, verbose = $VERBOSE"
 fi
 
 # shellcheck disable=SC2086
