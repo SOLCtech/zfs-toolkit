@@ -97,7 +97,7 @@ while true; do
 done
 
 if [[ -z "$PREFIX" ]]; then
-	echo "Prefix param (-p|--prefix) has to be set!"
+	echo >&2 "Prefix param (-p|--prefix) has to be set!"
 	exit 1
 fi
 
