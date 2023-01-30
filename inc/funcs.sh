@@ -10,8 +10,20 @@ function get_snapshots_to_purge() {
 		echo >&2 "Dataset $DATASET not found."
 		exit 1
 	}
-	LIST="$(echo "$LIST" | grep "@${PREFIX}_" | head -n -"$KEEPNUM")"
-	DATE="$(date +%s --date="-${KEEPDAYS} days")"
+
+	if [ "$(uname)" == 'FreeBSD' ]; then
+		LIST="$(echo "$LIST" | grep "@${PREFIX}_")"
+		DELNUM=$(($(echo "$LIST" | wc -l)-KEEPNUM))
+		if ((DELNUM<=0)); then
+			echo ""
+			exit 0
+		fi
+		LIST="$(echo "$LIST" | head -n "$DELNUM")"
+		DATE="$(date -v-${KEEPDAYS}d +%s)"
+	else
+		LIST="$(echo "$LIST" | grep "@${PREFIX}_" | head -n -"$KEEPNUM")"
+		DATE="$(date +%s --date="-${KEEPDAYS} days")"
+	fi
 
 	IFS=$'\n'
 

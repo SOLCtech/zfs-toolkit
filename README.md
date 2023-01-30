@@ -14,6 +14,8 @@
 -v, --verbose		Verbose mode
 ```
 
+Note: On FreeBSD is supported only short form of params.
+
 Purges snapshots by defined prefix recursively.
 Its behaviour is controlled by zfs dataset property "**cz.solctech:purge:\<prefix\>**". Value of property specifies if purging has to be done and how many snapshots and/or how many days have to be kept back.
 

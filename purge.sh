@@ -20,6 +20,8 @@ Usage:
 -d, --debug		Debug mode (set -x)
 -v, --verbose		Verbose mode
 
+Note: On FreeBSD is supported only short form of params.
+
 Purges snapshots by defined prefix recursively.
 Its behaviour is controlled by zfs dataset property "cz.solctech:purge:<prefix>".
 Value of property specifies if purging has to be done and how many snapshots
@@ -59,7 +61,13 @@ DRYRUN=0
 VERBOSE=0
 PREFIX=""
 
-options=$(getopt -l "help,prefix:,dry-run,debug,verbose" -o "hp:ndv" -- "$@")
+if [ "$(uname)" == 'FreeBSD' ]; then
+	# shellcheck disable=SC2048
+	# shellcheck disable=SC2086
+	options=$(getopt "hp:ndv" $*) || { show_help; exit 2; }
+else
+	options=$(getopt -l "help,prefix:,dry-run,debug,verbose" -o "hp:ndv" -- "$@") || { show_help; exit 2; }
+fi
 
 eval set -- "$options"
 
