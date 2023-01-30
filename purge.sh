@@ -5,6 +5,10 @@
 set -euo pipefail
 
 DIR="$(realpath "$(dirname -- "$0")")"
+PLATFORM="$(uname)"
+
+# shellcheck disable=SC1090
+source "$DIR/inc/platform/${PLATFORM,,}.sh" || { echo >&2 "Incompatible platform: $PLATFORM"; exit 1; }
 
 source "$DIR/inc/funcs.sh"
 
@@ -61,15 +65,9 @@ DRYRUN=0
 VERBOSE=0
 PREFIX=""
 
-if [ "$(uname)" == 'FreeBSD' ]; then
-	# shellcheck disable=SC2048
-	# shellcheck disable=SC2086
-	options=$(getopt "hp:ndv" $*) || { show_help; exit 2; }
-else
-	options=$(getopt -l "help,prefix:,dry-run,debug,verbose" -o "hp:ndv" -- "$@") || { show_help; exit 2; }
-fi
-
-eval set -- "$options"
+# shellcheck disable=SC2048
+# shellcheck disable=SC2086
+eval set -- "$(purge_getopt $*)" || { show_help; exit 2; }
 
 while true; do
 	case "$1" in
