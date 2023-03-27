@@ -51,7 +51,7 @@ function get_dataset_property() {
 	PROPERTY_NAME="cz.solctech:${SECTION}:${PREFIX}"
 
 	# cz.solctech:purge:backup = on,keepnum=3,keepdays=15
-	PROPERTY="$(zfs get -t filesystem -H -p -o value,source "$PROPERTY_NAME" "$DATASET" 2> /dev/null)" || {
+	PROPERTY="$(zfs get -t filesystem,volume -H -p -o value,source "$PROPERTY_NAME" "$DATASET" 2> /dev/null)" || {
 		echo >&2 "Reading property $PROPERTY_NAME of dataset $DATASET failed."
 		exit 1
 	}
@@ -101,7 +101,7 @@ function parse_purge_properties() {
 function get_direct_children() {
 	local DATASET="$1"
 
-	zfs list -t filesystem -H -o name -d 1 "$DATASET" 2> /dev/null | tail -n +2 || {
+	zfs list -t filesystem,volume -H -o name -d 1 "$DATASET" 2> /dev/null | tail -n +2 || {
 		echo >&2 "Listing of $DATASET children failed."
 		exit 1
 	}
