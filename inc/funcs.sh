@@ -1,17 +1,23 @@
 function get_snapshots_to_purge() {
-	local DATASET PREFIX KEEPNUM KEEPDAYS LIST DATE IFS FILTERED_LIST SNAP SNAPDATE SNAPNAME
+	local DATASET PREFIX LABEL KEEPNUM KEEPDAYS LIST DATE IFS FILTERED_LIST SNAP SNAPDATE SNAPNAME
 
 	DATASET="$1"
 	PREFIX="$2"
-	KEEPNUM="$3"
-	KEEPDAYS="$4"
+	LABEL="$3"
+	KEEPNUM="$4"
+	KEEPDAYS="$5"
 
 	LIST="$(zfs list -t snapshot -H -p -o creation,name -s creation "$DATASET" 2> /dev/null)" || {
 		echo >&2 "Dataset $DATASET not found."
 		exit 1
 	}
 
-	LIST="$(echo "$LIST" | grep "@${PREFIX}_" | head_negative_n "$KEEPNUM")"
+	if [[ -z "$LABEL" ]]; then
+		LIST="$(echo "$LIST" | grep "@${PREFIX}_" | head_negative_n "$KEEPNUM")"
+	else
+		LIST="$(echo "$LIST" | grep -E "@${PREFIX}_[0-9]{8}-[0-9]{4}_${LABEL}" | head_negative_n "$KEEPNUM")"
+	fi
+
 	DATE="$(date_keepdays "$KEEPDAYS")"
 
 	IFS=$'\n'
@@ -29,7 +35,7 @@ function get_snapshots_to_purge() {
 
 	FILTERED_LIST=$(echo "$FILTERED_LIST" | xargs)
 
-	if ((VERBOSE == 1)); then
+	if ((VERBOSE == 1)) && [[ -n "$FILTERED_LIST" ]]; then
 		echo >&2 "  Found snapshots to purge:"
 
 		IFS=$' '
@@ -42,32 +48,27 @@ function get_snapshots_to_purge() {
 }
 
 function get_dataset_property() {
-	local DATASET SECTION PREFIX PROPERTY_NAME PROPERTY IFS VALUE SOURCE
+	local DATASET PROPERTY_NAME SOURCE PROPERTY
 
 	DATASET="$1"
-	SECTION="$2"
-	PREFIX="$3"
-
-	PROPERTY_NAME="cz.solctech:${SECTION}:${PREFIX}"
+	PROPERTY_NAME="cz.solctech:$2"
+	SOURCE="${3:-inherited}"
 
 	# cz.solctech:purge:backup = on,keepnum=3,keepdays=15
-	PROPERTY="$(zfs get -t filesystem,volume -H -p -o value,source "$PROPERTY_NAME" "$DATASET" 2> /dev/null)" || {
+	PROPERTY="$(zfs get -t filesystem,volume -H -p -o value -s "$SOURCE" "$PROPERTY_NAME" "$DATASET" 2> /dev/null)" || {
 		echo >&2 "Reading property $PROPERTY_NAME of dataset $DATASET failed."
 		exit 1
 	}
 
-	IFS=$'\t'
-	read -r VALUE SOURCE <<< "$PROPERTY"
-
-	if [[ "$VALUE" == "-" ]]; then
+	if [[ -z "$PROPERTY" ]]; then
 		return 1
 	fi
 
-	echo "$VALUE"
+	echo "$PROPERTY"
 }
 
 function parse_purge_properties() {
-	local VALUE IFS PARAM ONOFF=0 KEEPNUM=-1 KEEPDAYS=-1
+	local VALUE IFS PARAM ONOFF=0 KEEPNUM=-1 KEEPDAYS=-1 NODIVE=0
 
 	#on,keepnum=3,keepdays=15
 	VALUE="$1"
@@ -76,10 +77,12 @@ function parse_purge_properties() {
 	for PARAM in $VALUE; do
 		PARAM="${PARAM,,}"
 
-		if [[ "$PARAM" =~ ^(yes|on|true)$ ]]; then
+		if [[ "$PARAM" =~ ^(yes|on|true|enabled?)$ ]]; then
 			ONOFF=1
-		elif [[ "$PARAM" =~ ^(no|off|false)$ ]]; then
+		elif [[ "$PARAM" =~ ^(no|off|false|disabled?)$ ]]; then
 			ONOFF=0
+		elif [[ "$PARAM" =~ ^(no-dive|nodive)$ ]]; then
+ 			NODIVE=1
 		elif [[ "$PARAM" =~ ^keepnum=[0-9]+ ]]; then
 			KEEPNUM=$(echo "$PARAM" | cut -d '=' -s -f 2)
 		elif [[ "$PARAM" =~ ^keepdays=[0-9]+ ]]; then
@@ -87,15 +90,11 @@ function parse_purge_properties() {
 		fi
 	done
 
-	if ((ONOFF == 0)); then
-		if ((VERBOSE == 1)); then
-    		echo >&2 "  OFF"
-		fi
-
-		return 1
+	if ((VERBOSE == 1)); then
+		echo >&2 "  $([ $ONOFF = 1 ] && echo "enabled" || echo "disabled")$([ $NODIVE = 1 ] && echo ", no dive")"
 	fi
 
-	echo "$KEEPNUM $KEEPDAYS"
+	echo "$ONOFF $NODIVE $KEEPNUM $KEEPDAYS"
 }
 
 function get_direct_children() {
@@ -108,12 +107,13 @@ function get_direct_children() {
 }
 
 function traverse_datasets_to_purge() {
-	local PREFIX PARENT_KEEPNUM PARENT_KEEPDAYS DATASETS DATASET
+	local PREFIX LABEL PARENT_KEEPNUM PARENT_KEEPDAYS DATASETS DATASET
 
 	PREFIX="$1"
-	PARENT_KEEPNUM="$2"
-	PARENT_KEEPDAYS="$3"
-	shift 3
+	LABEL="$2"
+	PARENT_KEEPNUM="$3"
+	PARENT_KEEPDAYS="$4"
+	shift 4
 	DATASETS="$*"
 
 	for DATASET in $DATASETS; do
@@ -121,28 +121,28 @@ function traverse_datasets_to_purge() {
 			echo -e >&2 "\nDataset: $DATASET"
 		fi
 
-		process_dataset_to_purge "$PREFIX" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" "$DATASET" || continue
+		process_dataset_to_purge "$PREFIX" "$LABEL" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" "$DATASET" || continue
 		DIRECT_CHILDREN="$(get_direct_children "$DATASET")" || exit 1
 
 		if [[ -n $DIRECT_CHILDREN ]]; then
 			# shellcheck disable=SC2086
-			traverse_datasets_to_purge "$PREFIX" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" $DIRECT_CHILDREN || exit 1
+			traverse_datasets_to_purge "$PREFIX" "$LABEL" "$PARENT_KEEPNUM" "$PARENT_KEEPDAYS" $DIRECT_CHILDREN || exit 1
 		fi
 	done
 }
 
 function process_dataset_to_purge() {
-	local PREFIX PARENT_KEEPNUM PARENT_KEEPDAYS DATASET PROPERTY PROPERTIES KEEPNUM KEEPDAYS
+	local PREFIX LABEL PARENT_KEEPNUM PARENT_KEEPDAYS DATASET PROPERTY KEEPNUM KEEPDAYS
 
 	PREFIX="$1"
-	PARENT_KEEPNUM="$2"
-	PARENT_KEEPDAYS="$3"
-	DATASET="$4"
+	LABEL="$2"
+	PARENT_KEEPNUM="$3"
+	PARENT_KEEPDAYS="$4"
+	DATASET="$5"
 
-	PROPERTY=$(get_dataset_property "$DATASET" purge "$PREFIX")
-	PROPERTIES=$(parse_purge_properties "$PROPERTY") || return 0
+	PROPERTY="$(get_dataset_property "$DATASET" "purge:${PREFIX}:${LABEL}" "local" || get_dataset_property "$DATASET" "purge:${PREFIX}" "local" || get_dataset_property "$DATASET" "purge:${PREFIX}:${LABEL}" || get_dataset_property "$DATASET" "purge:${PREFIX}")"
 
-	read -r KEEPNUM KEEPDAYS <<< "$PROPERTIES"
+	read -r ONOFF NODIVE KEEPNUM KEEPDAYS <<< "$(parse_purge_properties "$PROPERTY")"
 
 	if ((KEEPNUM < 0)); then
 		KEEPNUM=$PARENT_KEEPNUM
@@ -153,10 +153,14 @@ function process_dataset_to_purge() {
 	fi
 
 	if ((VERBOSE == 1)); then
-		echo >&2 "  ON, keep number = $KEEPNUM, keep days = $KEEPDAYS"
+		echo >&2 "  keep number = $KEEPNUM, keep days = $KEEPDAYS"
 	fi
 
-	get_snapshots_to_purge "$DATASET" "$PREFIX" "$KEEPNUM" "$KEEPDAYS" || exit 1
+	if ((ONOFF == 1)); then
+		get_snapshots_to_purge "$DATASET" "$PREFIX" "$LABEL" "$KEEPNUM" "$KEEPDAYS" || exit 1
+	fi
+
+	return "$NODIVE";
 }
 
 function check_snapshots_list() {

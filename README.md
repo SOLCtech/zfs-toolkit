@@ -1,5 +1,8 @@
 # zfs toolkit
 
+## Property priority
+local prefix:label > local prefix > inherited prefix:label > inherited prefix
+
 ## purge.sh
 
 ### Usage

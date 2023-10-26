@@ -59,11 +59,12 @@ $ ./purge.sh --dry-run --prefix=backup rpool
 EOF
 }
 
-DEFAULT_KEEPNUM=3
-DEFAULT_KEEPDAYS=15
+DEFAULT_KEEPNUM=-1
+DEFAULT_KEEPDAYS=-1
 DRYRUN=0
 VERBOSE=0
 PREFIX=""
+LABEL=""
 
 # shellcheck disable=SC2048
 # shellcheck disable=SC2086
@@ -78,6 +79,10 @@ while true; do
 	-p | --prefix)
 		shift
 		PREFIX="$1"
+		;;
+	-l | --label)
+		shift
+		LABEL="$1"
 		;;
 	-n | --dry-run)
 		DRYRUN=1
@@ -105,11 +110,11 @@ DATASETS="${*:-$(zfs list -t filesystem -H -o name -d 0)}"
 
 if ((VERBOSE == 1)); then
 	echo -e >&2 "\nSelected root datasets: $(echo "$DATASETS" | xargs)"
-	echo -e >&2 "\nOptions: prefix = $PREFIX, dryrun = $DRYRUN, verbose = $VERBOSE"
+	echo -e >&2 "\nOptions: prefix = $PREFIX, label = $LABEL, dryrun = $DRYRUN, verbose = $VERBOSE"
 fi
 
 # shellcheck disable=SC2086
-TO_DESTROY="$(traverse_datasets_to_purge "$PREFIX" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS $DATASETS)" || exit 1
+TO_DESTROY="$(traverse_datasets_to_purge "$PREFIX" "$LABEL" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS $DATASETS)" || exit 1
 
 if ((VERBOSE == 1)); then
 	echo -e >&2 "\nChecking snapshot list validity ...\n"

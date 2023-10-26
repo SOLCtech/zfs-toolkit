@@ -1,5 +1,9 @@
 function purge_getopt() {
-	getopt "hp:ndv" "$@"
+	getopt "hp:l:ndv" "$@"
+}
+
+function snapshot_getopt() {
+	getopt "hp:l:endv" "$@"
 }
 
 function date_keepdays() {

@@ -1,5 +1,9 @@
 function purge_getopt() {
-	getopt -l "help,prefix:,dry-run,debug,verbose" -o "hp:ndv" -- "$@"
+	getopt -l "help,prefix:,label:,dry-run,debug,verbose" -o "hp:l:ndv" -- "$@"
+}
+
+function snapshot_getopt() {
+	getopt -l "help,prefix:,label:,force-empty,dry-run,debug,verbose" -o "hp:l:endv" -- "$@"
 }
 
 function date_keepdays() {
