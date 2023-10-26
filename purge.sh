@@ -7,6 +7,8 @@ set -euo pipefail
 DIR="$(realpath "$(dirname -- "$0")")"
 PLATFORM="$(uname)"
 
+readonly DIR PLATFORM
+
 # shellcheck disable=SC1090
 source "$DIR/inc/platform/${PLATFORM,,}.sh" || { echo >&2 "Incompatible platform: $PLATFORM"; exit 1; }
 
@@ -15,8 +17,8 @@ source "$DIR/inc/funcs.sh"
 show_help() {
 	cat << EOF
 Usage:
-./purge.sh -h|--help
-./purge.sh -p|--prefix=snapshot_prefix [-n|--dry-run] [zfs_dataset]...
+purge.sh -h|--help
+purge.sh -p|--prefix=snapshot_prefix [-n|--dry-run] [zfs_dataset]...
 
 -h, --help		Shows help
 -p, --prefix		E.g. "mybackup" for rpool/USERDATA@mybackup_20221002-23
@@ -63,8 +65,8 @@ DEFAULT_KEEPNUM=-1
 DEFAULT_KEEPDAYS=-1
 DRYRUN=0
 VERBOSE=0
-PREFIX=""
-LABEL=""
+ARG_PREFIX=""
+ARG_LABEL=""
 
 # shellcheck disable=SC2048
 # shellcheck disable=SC2086
@@ -78,11 +80,11 @@ while true; do
 		;;
 	-p | --prefix)
 		shift
-		PREFIX="$1"
+		ARG_PREFIX="$1"
 		;;
 	-l | --label)
 		shift
-		LABEL="$1"
+		ARG_LABEL="$1"
 		;;
 	-n | --dry-run)
 		DRYRUN=1
@@ -101,7 +103,9 @@ while true; do
 	shift
 done
 
-if [[ -z "$PREFIX" ]]; then
+readonly ARG_PREFIX ARG_LABEL DRYRUN VERBOSE
+
+if [[ -z "$ARG_PREFIX" ]]; then
 	echo >&2 "Prefix param (-p|--prefix) has to be set!"
 	exit 1
 fi
@@ -115,15 +119,17 @@ function result() {
 
 trap result EXIT
 
-DATASETS="${*:-$(zfs list -t filesystem -H -o name -d 0)}"
+ARG_DATASETS="${*:-$(zfs list -t filesystem -H -o name -d 0)}"
+readonly ARG_DATASETS
 
 if ((VERBOSE == 1)); then
-	echo -e >&2 "\nSelected root datasets: $(echo "$DATASETS" | xargs)"
-	echo -e >&2 "\nOptions: prefix = $PREFIX, label = $LABEL, dryrun = $DRYRUN, verbose = $VERBOSE"
+	echo -e >&2 "\nSelected root datasets: $(echo "$ARG_DATASETS" | xargs)"
+	echo -e >&2 "\nOptions: prefix = $ARG_PREFIX, label = $ARG_LABEL, dryrun = $DRYRUN, verbose = $VERBOSE"
 fi
 
 # shellcheck disable=SC2086
-TO_DESTROY="$(traverse_datasets_to_purge "$PREFIX" "$LABEL" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS $DATASETS)" || exit 1
+TO_DESTROY="$(traverse_datasets_to_purge "$ARG_PREFIX" "$ARG_LABEL" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS $ARG_DATASETS)" || exit 1
+readonly TO_DESTROY
 
 if [[ -z "$TO_DESTROY" ]]; then
 	if ((VERBOSE == 1)); then
@@ -138,7 +144,7 @@ if ((VERBOSE == 1)); then
 fi
 
 # shellcheck disable=SC2086
-check_snapshots_list "$PREFIX" $TO_DESTROY
+check_snapshots_list "$ARG_PREFIX" $TO_DESTROY
 
 if ((VERBOSE == 1)); then
 	echo -e >&2 "\nExecuting zfs destroy ...\n"

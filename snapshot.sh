@@ -7,6 +7,8 @@ set -euo pipefail
 DIR="$(realpath "$(dirname -- "$0")")"
 PLATFORM="$(uname)"
 
+readonly DIR PLATFORM
+
 # shellcheck disable=SC1090
 source "$DIR/inc/platform/${PLATFORM,,}.sh" || { echo >&2 "Incompatible platform: $PLATFORM"; exit 1; }
 
@@ -16,8 +18,8 @@ source "$DIR/inc/snapshot-funcs.sh"
 show_help() {
 	cat << EOF
 Usage:
-./snapshot.sh -h|--help
-./snapshot.sh -l|--label=label [-p|--prefix=auto] [-e|--force-empty] [-n|--dry-run] [zfs_dataset]...
+snapshot.sh -h|--help
+snapshot.sh -l|--label=label [-p|--prefix=auto] [-e|--force-empty] [-n|--dry-run] [zfs_dataset]...
 
 -h, --help		Shows help
 -p, --prefix		Default "auto". E.g. "somethingelse" for rpool/USERDATA@somethingelse_20230507-2245_hourly
@@ -58,8 +60,8 @@ EOF
 
 DRYRUN=0
 VERBOSE=0
-PREFIX="auto"
-LABEL=""
+ARG_PREFIX="auto"
+ARG_LABEL=""
 FORCE_EMPTY=0
 
 # shellcheck disable=SC2048
@@ -74,11 +76,11 @@ while true; do
 		;;
 	-p | --prefix)
 		shift
-		PREFIX="$1"
+		ARG_PREFIX="$1"
 		;;
 	-l | --label)
 		shift
-		LABEL="$1"
+		ARG_LABEL="$1"
 		;;
 	-e | --force-empty)
 		FORCE_EMPTY=1
@@ -100,20 +102,23 @@ while true; do
 	shift
 done
 
-if [[ -z "$LABEL" ]]; then
+readonly ARG_PREFIX ARG_LABEL FORCE_EMPTY DRYRUN VERBOSE
+
+if [[ -z "$ARG_LABEL" ]]; then
 	echo >&2 "Label param (-l|--label) has to be set!"
 	exit 1
 fi
 
-DATASETS="${*:-$(zfs list -t filesystem -H -o name -d 0)}"
+ARG_DATASETS="${*:-$(zfs list -t filesystem -H -o name -d 0)}"
+readonly ARG_DATASETS
 
 if ((VERBOSE == 1)); then
-	echo -e >&2 "\nSelected root datasets: $(echo "$DATASETS" | xargs)"
-	echo -e >&2 "\nOptions: prefix = $PREFIX, label = $LABEL, force-empty = $FORCE_EMPTY, dryrun = $DRYRUN, verbose = $VERBOSE"
+	echo -e >&2 "\nSelected root datasets: $(echo "$ARG_DATASETS" | xargs)"
+	echo -e >&2 "\nOptions: prefix = $ARG_PREFIX, label = $ARG_LABEL, force-empty = $FORCE_EMPTY, dryrun = $DRYRUN, verbose = $VERBOSE"
 fi
 
 # shellcheck disable=SC2086
-traverse_datasets "$PREFIX" "$LABEL" $DATASETS
+traverse_datasets "$ARG_PREFIX" "$ARG_LABEL" $ARG_DATASETS
 
 if ((DRYRUN == 1)); then
 	echo -e >&2 "\n\nDry run mode was enabled. No changes were made!!!"

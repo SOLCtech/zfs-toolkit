@@ -4,6 +4,7 @@ set -euo pipefail
 #set -x
 
 DIR="$(realpath "$(dirname -- "$0")")"
+readonly DIR
 
 source "$DIR/inc/snapshot-funcs.sh"
 

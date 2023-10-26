@@ -7,6 +7,8 @@ function get_snapshots_to_purge() {
 	KEEPNUM="$4"
 	KEEPDAYS="$5"
 
+	readonly DATASET PREFIX LABEL KEEPNUM KEEPDAYS
+
 	LIST="$(zfs list -t snapshot -H -p -o creation,name -s creation "$DATASET" 2> /dev/null)" || {
 		echo >&2 "Dataset $DATASET not found."
 		exit 1
@@ -18,7 +20,10 @@ function get_snapshots_to_purge() {
 		LIST="$(echo "$LIST" | grep -E "@${PREFIX}_[0-9]{8}-[0-9]{4}_${LABEL}" | head_negative_n "$KEEPNUM")"
 	fi
 
+	readonly LIST
+
 	DATE="$(date_keepdays "$KEEPDAYS")"
+	readonly DATE
 
 	IFS=$'\n'
 
@@ -34,6 +39,7 @@ function get_snapshots_to_purge() {
 	done
 
 	FILTERED_LIST=$(echo "$FILTERED_LIST" | xargs)
+	readonly FILTERED_LIST
 
 	if ((VERBOSE == 1)) && [[ -n "$FILTERED_LIST" ]]; then
 		echo >&2 "  Found snapshots to purge:"
@@ -54,11 +60,15 @@ function get_dataset_property() {
 	PROPERTY_NAME="cz.solctech:$2"
 	SOURCE="${3:-inherited}"
 
+	readonly DATASET PROPERTY_NAME SOURCE
+
 	# cz.solctech:purge:backup = on,keepnum=3,keepdays=15
 	PROPERTY="$(zfs get -t filesystem,volume -H -p -o value -s "$SOURCE" "$PROPERTY_NAME" "$DATASET" 2> /dev/null)" || {
 		echo >&2 "Reading property $PROPERTY_NAME of dataset $DATASET failed."
 		exit 1
 	}
+
+	readonly PROPERTY
 
 	if [[ -z "$PROPERTY" ]]; then
 		return 1
@@ -72,6 +82,8 @@ function parse_purge_properties() {
 
 	#on,keepnum=3,keepdays=15
 	VALUE="$1"
+
+	readonly VALUE
 
 	IFS=','
 	for PARAM in $VALUE; do
@@ -90,6 +102,8 @@ function parse_purge_properties() {
 		fi
 	done
 
+	readonly ONOFF NODIVE KEEPNUM KEEPDAYS
+
 	if ((VERBOSE == 1)); then
 		echo >&2 "  $([ $ONOFF = 1 ] && echo "enabled" || echo "disabled")$([ $NODIVE = 1 ] && echo ", no dive")"
 	fi
@@ -98,7 +112,9 @@ function parse_purge_properties() {
 }
 
 function get_direct_children() {
-	local DATASET="$1"
+	local DATASET
+	DATASET="$1"
+	readonly DATASET
 
 	zfs list -t filesystem,volume -H -o name -d 1 "$DATASET" 2> /dev/null | tail -n +2 || {
 		echo >&2 "Listing of $DATASET children failed."
@@ -115,6 +131,8 @@ function traverse_datasets_to_purge() {
 	PARENT_KEEPDAYS="$4"
 	shift 4
 	DATASETS="$*"
+
+	readonly PREFIX LABEL PARENT_KEEPNUM PARENT_KEEPDAYS DATASETS
 
 	for DATASET in $DATASETS; do
 		if ((VERBOSE == 1)); then
@@ -140,7 +158,11 @@ function process_dataset_to_purge() {
 	PARENT_KEEPDAYS="$4"
 	DATASET="$5"
 
+	readonly PREFIX LABEL PARENT_KEEPNUM PARENT_KEEPDAYS DATASET
+
 	PROPERTY="$(get_dataset_property "$DATASET" "purge:${PREFIX}:${LABEL}" "local" || get_dataset_property "$DATASET" "purge:${PREFIX}" "local" || get_dataset_property "$DATASET" "purge:${PREFIX}:${LABEL}" || get_dataset_property "$DATASET" "purge:${PREFIX}")"
+
+	readonly PROPERTY
 
 	read -r ONOFF NODIVE KEEPNUM KEEPDAYS <<< "$(parse_purge_properties "$PROPERTY")"
 
@@ -170,16 +192,20 @@ function check_snapshots_list() {
 	shift 1
 	SNAPSHOT_LIST="$*"
 
+	readonly PREFIX SNAPSHOT_LIST
+
 	for SNAPSHOT in $SNAPSHOT_LIST; do
 		check_if_snapshot "$PREFIX" "$SNAPSHOT"
 	done
 }
 
 function check_if_snapshot() {
-	local PREFIX SNAPSHOT
+	local PREFIX SNAPSHOT TYPE
 
 	PREFIX="$1"
 	SNAPSHOT="$2"
+
+	readonly PREFIX SNAPSHOT
 
 	echo "$SNAPSHOT" | grep -E "^[^[:blank:]]+@${PREFIX}[^[:blank:]]+$" > /dev/null 2>&1 || {
 		echo -e >&2 "\nFATAL ERROR!\nDataset '$SNAPSHOT' seems to does not correspond to prefix '$PREFIX' and/or does not match snapshot format."
@@ -187,6 +213,8 @@ function check_if_snapshot() {
 	}
 
 	TYPE="$(zfs get -H -p -o value type "$SNAPSHOT")"
+
+	readonly TYPE
 
 	[[ "$TYPE" == 'snapshot' ]] || {
 		echo -e >&2 "\nFATAL ERROR!\nType of dataset '$SNAPSHOT' is not 'snapshot' but '$TYPE'!!!"

@@ -8,8 +8,8 @@ function snapshot_getopt() {
 
 function date_keepdays() {
 	local KEEPDAYS
-
 	KEEPDAYS="$1"
+	readonly KEEPDAYS
 
 	date +%s --date="-${KEEPDAYS} days"
 }

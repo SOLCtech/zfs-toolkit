@@ -6,6 +6,8 @@ function traverse_datasets() {
 	shift 2
 	DATASETS="$*"
 
+	readonly PREFIX LABEL DATASETS
+
 	for DATASET in $DATASETS; do
 		if ((VERBOSE == 1)); then
 			echo -e >&2 "\nDataset: $DATASET"
@@ -28,7 +30,11 @@ function process_dataset() {
 	LABEL="$2"
 	DATASET="$3"
 
+	readonly PREFIX LABEL DATASET
+
 	PROPERTY="$(get_dataset_property "$DATASET" "snapshot:${PREFIX}:${LABEL}" "local" || get_dataset_property "$DATASET" "snapshot:${PREFIX}" "local" || get_dataset_property "$DATASET" "snapshot:${PREFIX}:${LABEL}" || get_dataset_property "$DATASET" "snapshot:${PREFIX}")"
+
+	readonly PROPERTY
 
 	read -r ONOFF NODIVE <<< "$(parse_snapshot_properties "$PROPERTY")"
 
@@ -43,6 +49,8 @@ function parse_snapshot_properties() {
 	local VALUE IFS PARAM ONOFF=0 NODIVE=0
 
 	VALUE="$1"
+
+	readonly VALUE
 
 	IFS=','
 	for PARAM in $VALUE; do
@@ -71,8 +79,12 @@ function create_snapshot() {
 	LABEL="$2"
 	DATASET="$3"
 
+	readonly PREFIX LABEL DATASET
+
 	if ((FORCE_EMPTY == 1)) || is_dataset_changed "$PREFIX" "$DATASET"; then
 		SNAPSHOT="${DATASET}@${PREFIX}_$(date -u +"%Y%m%d-%H%M")_${LABEL}"
+
+		readonly SNAPSHOT
 
 		if ((VERBOSE == 1)); then
 			echo >&2 "  Creating a snapshot '$SNAPSHOT' ..."
@@ -104,6 +116,8 @@ function is_dataset_changed() {
 	PREFIX="$1"
 	DATASET="$2"
 
+	readonly PREFIX DATASET
+	
 	if [ "$(zfs get mounted -H -o value "$DATASET")" == 'no' ];	then
 		# can't check diff on unmounted dataset, don't create snapshot
 		return 3
@@ -116,6 +130,8 @@ function is_dataset_changed() {
 
 	LATEST_SNAPSHOT="$(get_latest_snapshot "$PREFIX" "$DATASET")"
 
+	readonly LATEST_SNAPSHOT
+
 	if [ -z "$LATEST_SNAPSHOT" ]; then
 		return 0
 	fi
@@ -123,6 +139,8 @@ function is_dataset_changed() {
 	DIFF="$(zfs diff -H "$LATEST_SNAPSHOT" 2> /dev/null)" || {
 		return 2
 	}
+
+	readonly DIFF
 
 	if [ -z "$DIFF" ]; then
 		return 1
@@ -136,6 +154,8 @@ function get_latest_snapshot() {
 
 	PREFIX="$1"
 	DATASET="$2"
+
+	readonly PREFIX DATASET
 
 	LIST="$(zfs list -t snapshot -H -p -o name -s creation "$DATASET" 2> /dev/null)" || {
 		echo >&2 "Dataset $DATASET not found!"
@@ -158,10 +178,13 @@ function has_hold() {
 # Arguments:
 # $1 - ZFS snapshot name
 function release_holds() {
-    local snapshot="$1"
+    local snapshot holds_list
+    snapshot="$1"
+    readonly snapshot
 
     # Get the list of holds for the snapshot
-    local holds_list=$(zfs holds -H "$snapshot")
+    holds_list=$(zfs holds -H "$snapshot")
+    readonly holds_list
 
     if [ -z "$holds_list" ]; then
         echo -e >&2 "No holds found for snapshot: $snapshot"
@@ -170,7 +193,8 @@ function release_holds() {
 
     # Loop through each hold and release it
     while read -r hold_line; do
-        local hold_tag=$(echo "$hold_line" | awk '{print $2}')
+        local hold_tag
+        hold_tag=$(echo "$hold_line" | awk '{print $2}')
         echo -e >&2 " Hold tag: $hold_tag"
         zfs release "$hold_tag" "$snapshot"
     done <<< "$holds_list"
