@@ -106,6 +106,15 @@ if [[ -z "$PREFIX" ]]; then
 	exit 1
 fi
 
+COUNTER_TOTAL=0
+COUNTER_SUCCESS=0
+
+function result() {
+	echo -e >&2 "zfs-toolkit/purge: total $COUNTER_TOTAL, successful $COUNTER_SUCCESS, error $(((COUNTER_TOTAL-COUNTER_SUCCESS)))"
+}
+
+trap result EXIT
+
 DATASETS="${*:-$(zfs list -t filesystem -H -o name -d 0)}"
 
 if ((VERBOSE == 1)); then
@@ -115,6 +124,14 @@ fi
 
 # shellcheck disable=SC2086
 TO_DESTROY="$(traverse_datasets_to_purge "$PREFIX" "$LABEL" $DEFAULT_KEEPNUM $DEFAULT_KEEPDAYS $DATASETS)" || exit 1
+
+if [[ -z "$TO_DESTROY" ]]; then
+	if ((VERBOSE == 1)); then
+		echo -e >&2 "\nNothing to do ...\n"
+	fi
+
+	exit 0
+fi
 
 if ((VERBOSE == 1)); then
 	echo -e >&2 "\nChecking snapshot list validity ...\n"
@@ -127,8 +144,18 @@ if ((VERBOSE == 1)); then
 	echo -e >&2 "\nExecuting zfs destroy ...\n"
 fi
 
-if ((DRYRUN == 1)); then
-	echo "$TO_DESTROY" | xargs -n1 --no-run-if-empty zfs destroy -vn
-else
-	echo "$TO_DESTROY" | xargs -n1 --no-run-if-empty zfs destroy -v
+FLAGS=''
+
+if ((VERBOSE == 1)); then
+	FLAGS+=' -v'
 fi
+
+if ((DRYRUN == 1)); then
+	FLAGS+=' -n'
+fi
+
+for SNAPSHOT in $TO_DESTROY; do
+	((COUNTER_TOTAL+=1))
+	# shellcheck disable=SC2086
+	zfs destroy $FLAGS "$SNAPSHOT" && ((COUNTER_SUCCESS+=1))
+done
