@@ -146,3 +146,32 @@ function get_latest_snapshot() {
 
 	echo "$LIST"
 }
+
+# Function to check if a ZFS snapshot has any holds
+# Arguments:
+# $1 - ZFS snapshot name
+function has_hold() {
+    zfs holds -H "$1" >/dev/null 2>&1
+}
+
+# Function to release all holds for a given ZFS snapshot
+# Arguments:
+# $1 - ZFS snapshot name
+function release_holds() {
+    local snapshot="$1"
+
+    # Get the list of holds for the snapshot
+    local holds_list=$(zfs holds -H "$snapshot")
+
+    if [ -z "$holds_list" ]; then
+        echo -e >&2 "No holds found for snapshot: $snapshot"
+        return
+    fi
+
+    # Loop through each hold and release it
+    while read -r hold_line; do
+        local hold_tag=$(echo "$hold_line" | awk '{print $2}')
+        echo -e >&2 " Hold tag: $hold_tag"
+        zfs release "$hold_tag" "$snapshot"
+    done <<< "$holds_list"
+}
