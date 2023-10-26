@@ -89,6 +89,8 @@ function create_snapshot() {
 		if ((VERBOSE == 1)); then
 			if ((IS_DATASET_CHANGED == 1)); then
 				echo >&2 "  No changes, not creating a snapshot ..."
+			elif ((IS_DATASET_CHANGED == 3)); then
+				echo >&2 "  Can't check diff on unmounted dataset!"
 			else
 				echo >&2 "Failed to check diff from latest snapshot! (Permissions?)"
 			fi
@@ -101,6 +103,16 @@ function is_dataset_changed() {
 
 	PREFIX="$1"
 	DATASET="$2"
+
+	if [ "$(zfs get mounted -H -o value "$DATASET")" == 'no' ];	then
+		# can't check diff on unmounted dataset, don't create snapshot
+		return 3
+	fi
+
+	if [ "$(zfs get type -H -o value "$DATASET")" == 'volume' ];	then
+		# can't check diff on volume, always create snapshot
+		return 0
+	fi
 
 	LATEST_SNAPSHOT="$(get_latest_snapshot "$PREFIX" "$DATASET")"
 
