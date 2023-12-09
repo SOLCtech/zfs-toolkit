@@ -81,7 +81,7 @@ function create_snapshot() {
 
 	readonly PREFIX LABEL DATASET
 
-	if ((FORCE_EMPTY == 1)) || is_dataset_changed "$PREFIX" "$DATASET"; then
+	if ((FORCE_EMPTY == 1)) || is_dataset_changed_written_property "$PREFIX" "$DATASET"; then
 		SNAPSHOT="${DATASET}@${PREFIX}_$(date -u +"%Y%m%d-%H%M")_${LABEL}"
 
 		readonly SNAPSHOT
@@ -104,10 +104,25 @@ function create_snapshot() {
 			elif ((IS_DATASET_CHANGED == 3)); then
 				echo >&2 "  Can't check diff on unmounted dataset!"
 			else
-				echo >&2 "Failed to check diff from latest snapshot! (Permissions?)"
+				echo >&2 "Failed to check if changed!"
 			fi
 		fi
 	fi
+}
+
+function is_dataset_changed_written_property() {
+	local DATASET WRITTEN
+
+	shift # arg count compatibility with is_dataset_changed()
+	DATASET="$1"
+
+	readonly DATASET
+
+	WRITTEN="$(zfs get written -Hp -o value "$DATASET")" || {
+		return 2
+	}
+
+	[ "$WRITTEN" -ne 0 ]
 }
 
 function is_dataset_changed() {
