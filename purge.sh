@@ -14,6 +14,8 @@ source "$DIR/inc/platform/${PLATFORM,,}.sh" || { echo >&2 "Incompatible platform
 
 source "$DIR/inc/funcs.sh"
 
+log_start
+
 show_help() {
 	cat <<- EOF
 		Usage:
@@ -114,7 +116,8 @@ COUNTER_TOTAL=0
 COUNTER_SUCCESS=0
 
 function result() {
-	echo -e >&2 "zfs-toolkit/purge: total $COUNTER_TOTAL, successful $COUNTER_SUCCESS, error $(((COUNTER_TOTAL-COUNTER_SUCCESS)))"
+	echo -e >&2 "zfs-toolkit/purge: total $COUNTER_TOTAL, successful $COUNTER_SUCCESS, error $((COUNTER_TOTAL-COUNTER_SUCCESS))"
+	log_end
 }
 
 trap result EXIT

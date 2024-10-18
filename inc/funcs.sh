@@ -221,3 +221,11 @@ function check_if_snapshot() {
 		exit 1
 	}
 }
+
+function log_start() {
+	tty -s || echo -e >&2 "\n>>>>> START $(date -R)"
+}
+
+function log_end() {
+	tty -s || echo -e >&2 "<<<<< END   $(date -R)\n"
+}

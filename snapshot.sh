@@ -15,6 +15,9 @@ source "$DIR/inc/platform/${PLATFORM,,}.sh" || { echo >&2 "Incompatible platform
 source "$DIR/inc/funcs.sh"
 source "$DIR/inc/snapshot-funcs.sh"
 
+log_start
+trap log_end EXIT
+
 show_help() {
 	cat <<- EOF
 		Usage:
