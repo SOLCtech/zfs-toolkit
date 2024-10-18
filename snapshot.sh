@@ -16,46 +16,46 @@ source "$DIR/inc/funcs.sh"
 source "$DIR/inc/snapshot-funcs.sh"
 
 show_help() {
-	cat << EOF
-Usage:
-snapshot.sh -h|--help
-snapshot.sh -l|--label=label [-p|--prefix=auto] [-e|--force-empty] [-n|--dry-run] [zfs_dataset]...
+	cat <<- EOF
+		Usage:
+		snapshot.sh -h|--help
+		snapshot.sh -l|--label=label [-p|--prefix=auto] [-e|--force-empty] [-n|--dry-run] [zfs_dataset]...
 
--h, --help		Shows help
--p, --prefix		Default "auto". E.g. "somethingelse" for rpool/USERDATA@somethingelse_20230507-2245_hourly
--l, --label		Label for finer resolution. E.g. "hourly" for rpool/USERDATA@auto_20230507-2245_hourly
--e, --force-empty	Force creating of empty snapshots
--n, --dry-run		Does not actually create snapshot
--d, --debug		Debug mode (set -x)
--v, --verbose		Verbose mode
+		-h, --help		Shows help
+		-p, --prefix		Default "auto". E.g. "somethingelse" for rpool/USERDATA@somethingelse_20230507-2245_hourly
+		-l, --label		Label for finer resolution. E.g. "hourly" for rpool/USERDATA@auto_20230507-2245_hourly
+		-e, --force-empty	Force creating of empty snapshots
+		-n, --dry-run		Does not actually create snapshot
+		-d, --debug		Debug mode (set -x)
+		-v, --verbose		Verbose mode
 
-Note: On FreeBSD is supported only short form of params.
+		Note: On FreeBSD is supported only short form of params.
 
-Creates snapshots by defined prefix and label recursively.
-Its behaviour is controlled by zfs dataset property "cz.solctech:snapshot:<prefix>:<label>".
-Value of property specifies if snapshot creation has to be done.
+		Creates snapshots by defined prefix and label recursively.
+		Its behaviour is controlled by zfs dataset property "cz.solctech:snapshot:<prefix>:<label>".
+		Value of property specifies if snapshot creation has to be done.
 
-Property value format:
-((on|yes|true)|(off|no|false))[,(no-dive|nodive)]
+		Property value format:
+		((on|yes|true)|(off|no|false))[,(no-dive|nodive)]
 
-Property value examples:
-on
-off
-on,no-dive
+		Property value examples:
+		on
+		off
+		on,no-dive
 
-Example:
-# allow snapshot creation for default prefix "auto" and label "hourly" for whole rpool
-$ zfs set cz.solctech:snapshot:auto:hourly=on rpool
+		Example:
+		# allow snapshot creation for default prefix "auto" and label "hourly" for whole rpool
+		$ zfs set cz.solctech:snapshot:auto:hourly=on rpool
 
-# don't want auto snapshots for anything in rpool/STORAGE/docker, even don't want traverse into child datasets
-$ zfs set cz.solctech:snapshot:auto:hourly=no-dive rpool/STORAGE/docker
+		# don't want auto snapshots for anything in rpool/STORAGE/docker, even don't want traverse into child datasets
+		$ zfs set cz.solctech:snapshot:auto:hourly=no-dive rpool/STORAGE/docker
 
-# specify correct prefix, specify datasets (or omit for all locally imported),
-# and try dry run
-$ ./snapshot.sh --dry-run --label=hourly rpool
+		# specify correct prefix, specify datasets (or omit for all locally imported),
+		# and try dry run
+		$ ./snapshot.sh --dry-run --label=hourly rpool
 
-# if everything seems ok, put in hourly cron
-EOF
+		# if everything seems ok, put in hourly cron
+		EOF
 }
 
 DRYRUN=0

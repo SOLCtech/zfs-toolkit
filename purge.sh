@@ -15,50 +15,50 @@ source "$DIR/inc/platform/${PLATFORM,,}.sh" || { echo >&2 "Incompatible platform
 source "$DIR/inc/funcs.sh"
 
 show_help() {
-	cat << EOF
-Usage:
-purge.sh -h|--help
-purge.sh -p|--prefix=snapshot_prefix [-n|--dry-run] [zfs_dataset]...
+	cat <<- EOF
+		Usage:
+		purge.sh -h|--help
+		purge.sh -p|--prefix=snapshot_prefix [-n|--dry-run] [zfs_dataset]...
 
--h, --help		Shows help
--p, --prefix		E.g. "mybackup" for rpool/USERDATA@mybackup_20221002-23
--n, --dry-run		Calls zfs destroy with -n argument
--d, --debug		Debug mode (set -x)
--v, --verbose		Verbose mode
+		-h, --help		Shows help
+		-p, --prefix		E.g. "mybackup" for rpool/USERDATA@mybackup_20221002-23
+		-n, --dry-run		Calls zfs destroy with -n argument
+		-d, --debug		Debug mode (set -x)
+		-v, --verbose		Verbose mode
 
-Note: On FreeBSD is supported only short form of params.
+		Note: On FreeBSD is supported only short form of params.
 
-Purges snapshots by defined prefix recursively.
-Its behaviour is controlled by zfs dataset property "cz.solctech:purge:<prefix>".
-Value of property specifies if purging has to be done and how many snapshots
-and/or how many days have to be kept back.
+		Purges snapshots by defined prefix recursively.
+		Its behaviour is controlled by zfs dataset property "cz.solctech:purge:<prefix>".
+		Value of property specifies if purging has to be done and how many snapshots
+		and/or how many days have to be kept back.
 
-Property value format:
-((on|yes|true)|(off|no|false))[,keepnum=<num>[,keepdays=<num>]]
+		Property value format:
+		((on|yes|true)|(off|no|false))[,keepnum=<num>[,keepdays=<num>]]
 
-Property value examples:
-on
-on,keepdays=10
-on,keepnum=3,keepdays=20
-off
+		Property value examples:
+		on
+		on,keepdays=10
+		on,keepnum=3,keepdays=20
+		off
 
-Example:
-# turn on of purging for prefix "backup" for whole rpool, keeping minimal of
-# 5 snapshots per dataset and keeping snapshots not older than 25 days
-$ zfs set cz.solctech:purge:backup=on,keepnum=5,keepdays=25 rpool
+		Example:
+		# turn on of purging for prefix "backup" for whole rpool, keeping minimal of
+		# 5 snapshots per dataset and keeping snapshots not older than 25 days
+		$ zfs set cz.solctech:purge:backup=on,keepnum=5,keepdays=25 rpool
 
-# for USERDATA keep more history (min. 10 snapshots and last 60 days)
-$ zfs set cz.solctech:purge:backup=on,keepnum=10,keepdays=60 rpool/USERDATA
+		# for USERDATA keep more history (min. 10 snapshots and last 60 days)
+		$ zfs set cz.solctech:purge:backup=on,keepnum=10,keepdays=60 rpool/USERDATA
 
-# for Projects turn off purging - no snapshots will be destroyed
-$ zfs set cz.solctech:purge:backup=off rpool/USERDATA/myuser/Projects
+		# for Projects turn off purging - no snapshots will be destroyed
+		$ zfs set cz.solctech:purge:backup=off rpool/USERDATA/myuser/Projects
 
-# specify correct prefix, specify datasets (or omit for all locally imported),
-# and try dry run
-$ ./purge.sh --dry-run --prefix=backup rpool
+		# specify correct prefix, specify datasets (or omit for all locally imported),
+		# and try dry run
+		$ ./purge.sh --dry-run --prefix=backup rpool
 
-# if everything seems ok, put in daily or weekly cron
-EOF
+		# if everything seems ok, put in daily or weekly cron
+		EOF
 }
 
 DEFAULT_KEEPNUM=-1
