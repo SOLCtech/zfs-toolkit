@@ -22,19 +22,19 @@ snapshot.sh -l|--label=label [-p|--prefix=auto] [-e|--force-empty] [-n|--dry-run
 Note: On FreeBSD is supported only short form of params.
 
 Creates snapshots by defined prefix and label recursively.
-Its behaviour is controlled by zfs dataset property "cz.solctech:snapshot:<prefix>:<label>".
+Its behaviour is controlled by zfs dataset property `cz.solctech:snapshot:<prefix>:<label>`.
 Value of property specifies if snapshot creation has to be done.
 
 #### Property value format
-((on|yes|true)|(off|no|false))[,(no-dive|nodive)]
+`((on|yes|true)|(off|no|false))[,(no-dive|nodive)]`
 
 #### Property value examples
-on \
-off \
-on,no-dive
+`on` \
+`off` \
+`on,no-dive`
 
 ### Example
-Allow snapshot creation for default prefix "auto" and label "hourly" for whole rpool.
+Allow snapshot creation for default prefix `auto` and label `hourly` for whole rpool.
 ```shell
 zfs set cz.solctech:snapshot:auto:hourly=on rpool
 ```
@@ -68,19 +68,19 @@ purge.sh -p|--prefix=snapshot_prefix [-n|--dry-run] [zfs_dataset]...
 Note: On FreeBSD is supported only short form of params.
 
 Purges snapshots by defined prefix recursively.
-Its behaviour is controlled by zfs dataset property "**cz.solctech:purge:\<prefix\>**". Value of property specifies if purging has to be done and how many snapshots and/or how many days have to be kept back.
+Its behaviour is controlled by zfs dataset property `cz.solctech:purge:<prefix>`. Value of property specifies if purging has to be done and how many snapshots and/or how many days have to be kept back.
 
 #### Property value format
-((on|yes|true)|(off|no|false))[,keepnum=#num[,keepdays=#num]]
+`((on|yes|true)|(off|no|false))[,keepnum=#num[,keepdays=#num]]`
 
 #### Property value examples
-on \
-on,keepdays=10 \
-on,keepnum=3,keepdays=20 \
-off
+`on` \
+`on,keepdays=10` \
+`on,keepnum=3,keepdays=20` \
+`off`
 
 ### Example
-Turn on of purging for prefix "**backup**" for whole **rpool**, keeping minimal of 5 snapshots per dataset and keeping snapshots not older than 25 days.
+Turn on of purging for prefix `backup` for whole **rpool**, keeping minimal of 5 snapshots per dataset and keeping snapshots not older than 25 days.
 ```shell
 zfs set cz.solctech:purge:backup=on,keepnum=5,keepdays=25 rpool
 ```
@@ -112,7 +112,7 @@ release.sh <snapshot1> [snapshot2 ...]
 Releases all holds on given list of snapshots.
 
 ### Example
-Release all holds on snapshot **rpool@backup_123**. 
+Release all holds on snapshot `rpool@backup_123`.
 ```
 $ release.sh rpool@backup_123
 
